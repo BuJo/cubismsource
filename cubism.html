@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Foo</title>
+<style>
+@import url(//fonts.googleapis.com/css?family=Yanone+Kaffeesatz:400,700);
+@import url(//square.github.com/cubism/style.css);
+#jbuchmetric { min-height: 155px; }
+</style>
+    <script type="text/javascript" src="http://d3js.org/d3.v2.js"></script>
+    <script type="text/javascript" src="http://raw.github.com/square/cubism/master/cubism.v1.js"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+  </head>
+  <body>
+    Metric:
+    <div id="jbuchmetric" ></div>
+    <div id="example1" ></div>
+
+    <script type="text/javascript">
+var jbuchCtxgen = function(host) {
+  if (!arguments.length) host = "localhost:8080";
+  var source = {};/*,
+      context = this;*/
+
+  var cubism_cubeFormatDate = d3.time.format.iso;
+
+  source.metric = function(expression) {
+    return context.metric(function(start, stop, step, callback) {
+      d3.json(host + "/1.0/metric"
+          + "?expression=" + encodeURIComponent(expression)
+          + "&start=" + cubism_cubeFormatDate(start)
+          + "&stop=" + cubism_cubeFormatDate(stop)
+          + "&step=" + step, function(data) {
+        if (!data) return callback(new Error("unable to load data"));
+        callback(null, data.map(function(d) { return d.value; }));
+      });
+    }, expression += "");
+  };
+
+  // Returns the Cube host.
+  source.toString = function() {
+    return host;
+  };
+
+  return source;
+};
+
+    </script>
+    <script type="text/javascript">
+
+var context = cubism.context().serverDelay(5e3)
+    .clientDelay(5e3)
+    .step(10 * 1e3)
+    .size(1440);
+
+
+var jbuchctx = jbuchCtxgen("http://localhost:8080");
+var jbuchmetric = jbuchctx.metric("free");
+
+d3.select("#jbuchmetric").call(function(div) {
+
+  div.append("div")
+      .attr("class", "axis")
+      .call(context.axis().orient("top"));
+
+  div.selectAll(".horizon")
+      .data([jbuchmetric])
+    .enter().append("div")
+      .attr("class", "horizon")
+      .call(context.horizon().extent([-20, 20]));
+
+  div.append("div")
+      .attr("class", "rule")
+      .call(context.rule());
+});
+
+
+function random(name) {
+  var value = 0,
+      values = [],
+      i = 0,
+      last;
+  return context.metric(function(start, stop, step, callback) {
+    start = +start, stop = +stop;
+    if (isNaN(last)) last = start;
+    while (last < stop) {
+      last += step;
+      value = Math.max(-10, Math.min(10, value + .8 * Math.random() - .4 + .2 * Math.cos(i += .2)));
+      values.push(value);
+    }
+    callback(null, values = values.slice((start - stop) / step));
+  }, name);
+}
+
+
+var foo = random("foo"),
+    bar = random("bar");
+
+d3.select("#example1").call(function(div) {
+
+  div.append("div")
+      .attr("class", "axis")
+      .call(context.axis().orient("top"));
+
+  div.selectAll(".horizon")
+      .data([foo, bar, foo.add(bar), foo.subtract(bar)])
+    .enter().append("div")
+      .attr("class", "horizon")
+      .call(context.horizon().extent([-20, 20]));
+
+  div.append("div")
+      .attr("class", "rule")
+      .call(context.rule());
+
+});
+
+
+// On mousemove, reposition the chart values to match the rule.
+
+context.on("focus", function(i) {
+  d3.selectAll(".value").style("right", i == null ? null : context.size() - i + "px");
+});
+    </script>
+  </body>
+</html>
