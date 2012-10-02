@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Foo</title>
+<meta charset="utf-8">
+<title>Cubism.js</title>
 <style>
 @import url(//fonts.googleapis.com/css?family=Yanone+Kaffeesatz:400,700);
 @import url(//square.github.com/cubism/style.css);
+
 #jbuchmetric { min-height: 155px; }
 </style>
-    <script type="text/javascript" src="http://d3js.org/d3.v2.js"></script>
-    <script type="text/javascript" src="http://raw.github.com/square/cubism/master/cubism.v1.js"></script>
-    <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
-  </head>
-  <body>
-    Metric:
-    <div id="jbuchmetric" ></div>
-    <div id="example1" ></div>
-
-    <script type="text/javascript">
+<div id="body">
+  <h2>Metric:</h2>
+  <div id="jbuchmetric" ></div>
+  <div id="example1" ></div>
+</div>
+<script type="text/javascript" src="http://d3js.org/d3.v2.js"></script>
+<script type="text/javascript" src="http://raw.github.com/square/cubism/master/cubism.v1.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+<script type="text/javascript">
 var jbuchCtxgen = function(host) {
   if (!arguments.length) host = "localhost:8080";
   var source = {};/*,
@@ -37,6 +36,7 @@ var jbuchCtxgen = function(host) {
             cubism_cubeFormatDate.parse(d.date);
             d.value = parseInt(d.value);
           });
+          console.log("Got data from "+host+" , count: "+data.length);
           callback(null, data.map(function (d) { return d.value; }) );
       });
     }, expression += "");
@@ -53,14 +53,28 @@ var jbuchCtxgen = function(host) {
     </script>
     <script type="text/javascript">
 
-var context = cubism.context().serverDelay(5e3)
-    .clientDelay(5e3)
-    .step(10 * 1e3)
+var context = cubism.context()
+    .serverDelay(0)
+    .clientDelay(0)
+    .step(20 * 1e3)
     .size(1440);
-
+/*
+var context = cubism.context()
+      .serverDelay(0)
+      .clientDelay(0)
+      .step(1e3)
+      .size(960);
+*/
 
 var jbuchctx = jbuchCtxgen("http://localhost:8080");
-var jbuchmetric = jbuchctx.metric("free");
+var metric_free = jbuchctx.metric("free");
+var metric_total = jbuchctx.metric("total");
+
+var metric_used = metric_total.subtract(metric_free);
+var lastWeek = metric_used.shift(-7 * 24 * 60 * 60 * 1000);
+
+metric_used.toString = function() { return "Used" };
+lastWeek.toString = function() { return "LastWeek" };
 
 d3.select("#jbuchmetric").call(function(div) {
 
@@ -69,10 +83,10 @@ d3.select("#jbuchmetric").call(function(div) {
       .call(context.axis().orient("top"));
 
   div.selectAll(".horizon")
-      .data([jbuchmetric])
+      .data([metric_used, lastWeek])
     .enter().append("div")
       .attr("class", "horizon")
-      .call(context.horizon().extent([-20, 20]));
+      .call(context.horizon()/*.extent([0, 1500])*/);
 
   div.append("div")
       .attr("class", "rule")
@@ -93,6 +107,7 @@ function random(name) {
       value = Math.max(-10, Math.min(10, value + .8 * Math.random() - .4 + .2 * Math.cos(i += .2)));
       values.push(value);
     }
+    console.log("calculated random values, count: "+(values.slice((start - stop) / step).length));
     callback(null, values = values.slice((start - stop) / step));
   }, name);
 }
