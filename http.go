@@ -20,18 +20,21 @@ type appHandler func(http.ResponseWriter, *http.Request) *appError
 
 // "/1.0/metric?expression=free&start=2012-10-01T15:15:40.000Z&stop=2012-10-01T15:16:50.000Z&step=10000"
 func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
-	//fmt.Printf("Metrics Request: %#v\n", r.URL.Query())
+	fmt.Printf("Metrics Request: %#v\n", r.URL.Query())
 
 	err := appError{nil, "Something went Wrong", 500}
 
+	var site string
 	var expression string
 	var start time.Time
 	var stop time.Time
 	var step time.Duration
+
 	var bytes []byte
 
 	query := r.URL.Query()
 
+	site = query.Get("site")
 	expression = query.Get("expression")
 	start, err.Error = time.Parse(IsoD3Format, query.Get("start"))
 	stop, err.Error = time.Parse(IsoD3Format, query.Get("stop"))
@@ -41,7 +44,12 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
 		return &err
 	}
 
-	series := stepTimeSeries(getTimeSeries(expression, start, stop), start, stop, step)
+	if site == "" {
+		site = "TST"
+	}
+
+	//series := stepTimeSeries(getSqliteTimeSeries(site, expression, start, stop), start, stop, step)
+	series := stepTimeSeries(getCurrentTimeSeries(site, expression, start, stop), start, stop, step)
 	if series == nil {
 		err.Message = "Something bad happened with steps"
 		return &err
@@ -67,6 +75,7 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
 
 	return nil
 }
+
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
 		http.Error(w, e.Message+":"+e.Error.Error(), e.Code)
@@ -86,6 +95,7 @@ func stepTimeSeries(series *TimeSeries, start, stop time.Time, step time.Duratio
 	var steppedSeries TimeSeries
 
 	if series == nil || len(series.Entries) < 1 {
+		fmt.Printf("no input time series\n")
 		return &steppedSeries
 	}
 
@@ -96,7 +106,7 @@ func stepTimeSeries(series *TimeSeries, start, stop time.Time, step time.Duratio
 		entry := TimeSeriesEntry{series.Entries[0].Name, currentTime, ""}
 
 		i := sort.Search(len(series.Entries), func(i int) bool { return series.Entries[i].Time.After(currentTime) })
-		if i < len(series.Entries) {
+		if i <= len(series.Entries) {
 			if i == 0 {
 				entry.Value = series.Entries[0].Value
 			} else {
@@ -131,9 +141,8 @@ const (
 	IsoD3Format      = "2006-01-02T15:04:05.000Z"
 )
 
-func getTimeSeries(field string, start, stop time.Time) *TimeSeries {
+func getSqliteTimeSeries(site, field string, start, stop time.Time) *TimeSeries {
 	filename := "jvm-ram.db"
-	site := "TST"
 
 	dbconn, err := sqlite.Open(filename)
 	if err != nil {
@@ -181,6 +190,57 @@ func getTimeSeries(field string, start, stop time.Time) *TimeSeries {
 	if len(series.Entries) == 0 {
 		fmt.Printf("No Values for: %s\n", stmt.SQL())
 	}
+
+	return &series
+}
+
+var (
+	JbossStatusUrls = map[string]string{
+		"TST": "http://127.0.0.1:8080/status?XML=true",
+	}
+)
+
+func getCurrentTimeSeries(site, field string, start, stop time.Time) *TimeSeries {
+	if time.Now().Sub(start).Minutes() > 3 {
+		fmt.Printf("Skipping, not supposed to look into past\n")
+		return nil
+	}
+
+	fmt.Printf("Trying to get xml from: %s\n", JbossStatusUrls[site])
+
+	resp, respErr := http.Get(JbossStatusUrls[site])
+	if respErr != nil {
+		fmt.Printf("Can't get jboss xml: %s\n", respErr)
+		return nil
+	}
+
+	info, infoErr := GetJbossInfo(resp.Body)
+	if infoErr != nil {
+		fmt.Printf("Parsing jboss xml failed: %s\n", infoErr)
+		return nil
+	}
+
+	series := TimeSeries{}
+	series.Entries = []TimeSeriesEntry{}
+
+	entry := TimeSeriesEntry{field, start, ""}
+
+	switch field {
+	case "free":
+		entry.Value = strconv.Itoa(info.JvmStatus.Free)
+	case "total":
+		entry.Value = strconv.Itoa(info.JvmStatus.Total)
+	case "max":
+		entry.Value = strconv.Itoa(info.JvmStatus.Max)
+	case "threads":
+		entry.Value = strconv.Itoa(info.Connector.ThreadInfo.CurrentThreadCount)
+	default:
+		return nil
+	}
+
+	series.Entries = append(series.Entries, entry)
+
+	fmt.Printf("%#v\n", entry)
 
 	return &series
 }

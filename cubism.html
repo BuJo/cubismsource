@@ -23,10 +23,11 @@ var jbuchCtxgen = function(host) {
 
   var cubism_cubeFormatDate = d3.time.format.iso;
 
-  source.metric = function(expression) {
+  source.metric = function(site, expression) {
     return context.metric(function(start, stop, step, callback) {
       var url = host + "/1.0/metric"
-          + "?expression=" + encodeURIComponent(expression)
+          + "?site=" + encodeURIComponent(site)
+          + "&expression=" + encodeURIComponent(expression)
           + "&start=" + cubism_cubeFormatDate(start)
           + "&stop=" + cubism_cubeFormatDate(stop)
           + "&step=" + step;
@@ -39,12 +40,12 @@ var jbuchCtxgen = function(host) {
           console.log("Got data from "+host+" , count: "+data.length);
           callback(null, data.map(function (d) { return d.value; }) );
       });
-    }, expression += "");
+    }, ""+site+" "+expression);
   };
 
   // Returns the Cube host.
   source.toString = function() {
-    return host;
+    return ""+site+" "+expression;
   };
 
   return source;
@@ -53,28 +54,35 @@ var jbuchCtxgen = function(host) {
     </script>
     <script type="text/javascript">
 
-var context = cubism.context()
-    .serverDelay(0)
-    .clientDelay(0)
-    .step(20 * 1e3)
-    .size(1440);
 /*
 var context = cubism.context()
-      .serverDelay(0)
-      .clientDelay(0)
-      .step(1e3)
-      .size(960);
+    .serverDelay(50)
+    .clientDelay(10)
+    .step(20 * 1e3)
+    .size(1440);
 */
+var context = cubism.context()
+      .serverDelay(500)
+      .clientDelay(100)
+      .step(10e3)
+      .size(960);
 
 var jbuchctx = jbuchCtxgen("http://localhost:8080");
-var metric_free = jbuchctx.metric("free");
-var metric_total = jbuchctx.metric("total");
+var metric_free = jbuchctx.metric("TST", "free");
+var metric_total = jbuchctx.metric("TST", "total");
+var metric_threads = jbuchctx.metric("TST", "threads");
 
 var metric_used = metric_total.subtract(metric_free);
 var lastWeek = metric_used.shift(-7 * 24 * 60 * 60 * 1000);
 
 metric_used.toString = function() { return "Used" };
+metric_threads.toString = function() { return "Threads" };
 lastWeek.toString = function() { return "LastWeek" };
+
+
+var colorsRed = ["#FDBE85", "#FEEDDE", "#FD8D3C", "#E6550D", "#A63603", "#FDBE85", "#FEEDDE", "#FD8D3C", "#E6550D", "#A63603" ],
+        colorsGreen = [ "#E5F5F9", "#99D8C9", "#2CA25F", "#E5F5F9", "#99D8C9", "#2CA25F"],
+            colorsBlue = [ "#ECE7F2", "#A6BDDB", "#2B8CBE", "#ECE7F2", "#A6BDDB", "#2B8CBE"];
 
 d3.select("#jbuchmetric").call(function(div) {
 
@@ -83,57 +91,16 @@ d3.select("#jbuchmetric").call(function(div) {
       .call(context.axis().orient("top"));
 
   div.selectAll(".horizon")
-      .data([metric_used, lastWeek])
-    .enter().append("div")
+      .data([metric_used, metric_threads])
+      .enter().append("div")
       .attr("class", "horizon")
-      .call(context.horizon()/*.extent([0, 1500])*/);
+      .call(context.horizon()/*.extent([0, 1500])*/
+        .colors(function (d,i) { console.log(d); console.log(i); return i & 1 > 0 ? colorsBlue : colorsGreen; }));
 
   div.append("div")
       .attr("class", "rule")
       .call(context.rule());
 });
-
-
-function random(name) {
-  var value = 0,
-      values = [],
-      i = 0,
-      last;
-  return context.metric(function(start, stop, step, callback) {
-    start = +start, stop = +stop;
-    if (isNaN(last)) last = start;
-    while (last < stop) {
-      last += step;
-      value = Math.max(-10, Math.min(10, value + .8 * Math.random() - .4 + .2 * Math.cos(i += .2)));
-      values.push(value);
-    }
-    console.log("calculated random values, count: "+(values.slice((start - stop) / step).length));
-    callback(null, values = values.slice((start - stop) / step));
-  }, name);
-}
-
-
-var foo = random("foo"),
-    bar = random("bar");
-
-d3.select("#example1").call(function(div) {
-
-  div.append("div")
-      .attr("class", "axis")
-      .call(context.axis().orient("top"));
-
-  div.selectAll(".horizon")
-      .data([foo, bar, foo.add(bar), foo.subtract(bar)])
-    .enter().append("div")
-      .attr("class", "horizon")
-      .call(context.horizon().extent([-20, 20]));
-
-  div.append("div")
-      .attr("class", "rule")
-      .call(context.rule());
-
-});
-
 
 // On mousemove, reposition the chart values to match the rule.
 

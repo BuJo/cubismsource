@@ -1,10 +1,8 @@
 package main
 
-import "encoding/xml"
-import "flag"
-import "os"
-import "fmt"
+import "io"
 import "io/ioutil"
+import "encoding/xml"
 
 type JbossJvmStatus struct {
 	Free  int `xml:"free,attr"`
@@ -50,29 +48,17 @@ type JbossStatus struct {
 	Connector JbossConnector `xml:"connector"`
 }
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("Input file missing")
-		os.Exit(1)
-	}
-
-	data, readError := ioutil.ReadFile(args[0])
+func GetJbossInfo(r io.Reader) (*JbossStatus, error) {
+	data, readError := ioutil.ReadAll(r)
 	if readError != nil || len(data) < 1 {
-		fmt.Printf("error: %v", readError)
-		os.Exit(1)
+		return nil, readError
 	}
 
 	v := JbossStatus{}
-
 	err := xml.Unmarshal(data, &v)
 	if err != nil {
-		fmt.Printf("xml error: %v", err)
-		os.Exit(1)
+		return nil, err
 	}
 
-	fmt.Printf("JVM: Used: %.2f MB\n", (float64)(v.JvmStatus.Total-v.JvmStatus.Free)/1024/1024)
-	//fmt.Printf("%#v\n", v)
-	//fmt.Printf("%v\n", string(data[0:100]))
+	return &v, nil
 }
