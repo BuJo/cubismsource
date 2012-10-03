@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,9 +16,6 @@ import (
 import "code.google.com/p/gosqlite/sqlite"
 
 var (
-	sqliteDB = flag.String("db", "jvm-ram2.db", "Database for Sqlite implementation")
-	site     = flag.String("site", "TST", "The site that the parsed html files belong to")
-
 	htmlInfoRE     = regexp.MustCompile(">([A-Z#][A-Za-z ]*): </b>([^<]*)<")
 	fileDateFormat = "2006-01-02 15:04:05-07:00.html"
 )
@@ -152,9 +148,7 @@ func sqliteWriteHandler(queue chan *InsertRequest) chan bool {
 	return ok
 }
 
-func main() {
-	flag.Parse()
-
+func importHtml() {
 	r := bufio.NewReader(os.Stdin)
 
 	peek, peekErr := r.Peek(5)
