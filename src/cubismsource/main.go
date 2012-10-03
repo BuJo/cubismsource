@@ -7,6 +7,19 @@ import "io/ioutil"
 import "time"
 import "net/http"
 import "encoding/json"
+import "flag"
+import "os"
+
+var (
+	bindServer = flag.String("bind", ":8080", "Address/Port to bind to, default: *:8080")
+	httpRoot   = flag.String("root", "assets", "HTTP Root")
+	intImpl    = flag.String("impl", "jboss", "INTERNAL specifying server behaviour")
+
+	Usage = func() {
+		fmt.Printf("%s Usage:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+)
 
 type appError struct {
 	Error   error
@@ -81,7 +94,7 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCubism(w http.ResponseWriter, r *http.Request) *appError {
-	filename := "cubism.html"
+	filename := *httpRoot + "/cubism.html"
 
 	var err appError
 	var data []byte
@@ -97,8 +110,10 @@ func handleCubism(w http.ResponseWriter, r *http.Request) *appError {
 }
 
 func main() {
+	flag.Parse()
+
 	http.Handle("/1.0/", appHandler(handleMetrics))
 	http.Handle("/cubism", appHandler(handleCubism))
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(*bindServer, nil))
 }

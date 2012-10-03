@@ -2,7 +2,12 @@ package main
 
 import "fmt"
 import "time"
+import "flag"
 import "code.google.com/p/gosqlite/sqlite"
+
+var (
+	sqliteDB = flag.String("db", "jvm-ram.db", "Database for Sqlite implementation")
+)
 
 const (
 	SqliteTimeFormat = "2006-01-02 15:04:05-07:00"
@@ -10,7 +15,7 @@ const (
 )
 
 func getSqliteTimeSeries(site, field string, start, stop time.Time) *TimeSeries {
-	filename := "jvm-ram.db"
+	filename := *sqliteDB
 
 	dbconn, err := sqlite.Open(filename)
 	if err != nil {

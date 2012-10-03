@@ -4,6 +4,7 @@ import "fmt"
 import "strconv"
 import "time"
 import "net/http"
+import "jbossinfo"
 
 var (
 	JbossStatusUrls = map[string]string{
@@ -25,7 +26,7 @@ func getCurrentTimeSeries(site, field string, start, stop time.Time) *TimeSeries
 		return nil
 	}
 
-	info, infoErr := GetJbossInfo(resp.Body)
+	info, infoErr := jbossinfo.ParseJbossInfoXML(resp.Body)
 	if infoErr != nil {
 		fmt.Printf("Parsing jboss xml failed: %s\n", infoErr)
 		return nil
@@ -44,7 +45,11 @@ func getCurrentTimeSeries(site, field string, start, stop time.Time) *TimeSeries
 	case "max":
 		entry.Value = strconv.Itoa(info.JvmStatus.Max)
 	case "threads":
-		entry.Value = strconv.Itoa(info.Connector.ThreadInfo.CurrentThreadCount)
+		threadCount := 0
+		for _, connector := range info.Connectors {
+			threadCount += connector.ThreadInfo.CurrentThreadsBusy
+		}
+		entry.Value = strconv.Itoa(threadCount)
 	default:
 		return nil
 	}

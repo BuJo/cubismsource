@@ -1,4 +1,4 @@
-package main
+package jbossinfo
 
 import "io"
 import "io/ioutil"
@@ -43,12 +43,12 @@ type JbossConnector struct {
 	Workers     []JbossWorker    `xml:"workers"`
 }
 type JbossStatus struct {
-	XMLName   xml.Name       `xml:"status"`
-	JvmStatus JbossJvmStatus `xml:"jvm>memory"`
-	Connector JbossConnector `xml:"connector"`
+	XMLName    xml.Name         `xml:"status"`
+	JvmStatus  JbossJvmStatus   `xml:"jvm>memory"`
+	Connectors []JbossConnector `xml:"connector"`
 }
 
-func GetJbossInfo(r io.Reader) (*JbossStatus, error) {
+func ParseJbossInfoXML(r io.Reader) (*JbossStatus, error) {
 	data, readError := ioutil.ReadAll(r)
 	if readError != nil || len(data) < 1 {
 		return nil, readError
