@@ -29,9 +29,19 @@ func TestTime(t *testing.T) {
 		t.Errorf("Expected Bad Parse/Format: %v, want %v", s5, "0001-01-01T00:00:00Z")
 	}
 
-	t2, _ = time.Parse("2006-01-02T15:04:05.000Z", "2012-10-01T15:15:40.000Z")
+	t2, _ = time.Parse("2006-01-02T15:04:05.000Z", "2012-10-01T15:48:40.000Z")
 	s6 := t2.Format(time.RFC3339)
-	if s6 != "2012-10-01T15:15:40Z" {
-		t.Errorf("Expected good parse/format: %v, want %v", s6, "2012-10-01T15:15:40Z")
+	if s6 != "2012-10-01T15:48:40Z" {
+		t.Errorf("Expected good parse/format: %v, want %v", s6, "2012-10-01T15:48:40Z")
+	}
+
+	if t2.Month() != 10 {
+		t.Errorf("Expected month to be 10, was: %d\n", t2.Month())
+	}
+	if t2.Year() != 2012 {
+		t.Errorf("Expected year to be 2012, was: %d\n", t2.Year())
+	}
+	if t2.Day() != 1 {
+		t.Errorf("Expected day to be 1, was: %d\n", t2.Day())
 	}
 }
