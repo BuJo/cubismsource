@@ -62,3 +62,20 @@ func ParseJbossInfoXML(r io.Reader) (*JbossStatus, error) {
 
 	return &v, nil
 }
+
+func NewStatus() *JbossStatus {
+	status := new(JbossStatus)
+	status.XMLName = xml.Name{"", "status"}
+	status.JvmStatus = JbossJvmStatus{}
+	status.Connectors = make([]JbossConnector, 1)
+	status.Connectors[0].Name = ""
+	status.Connectors[0].ThreadInfo = JbossThreadInfo{}
+
+	return status
+}
+
+func InfoXML(s *JbossStatus) ([]byte, error) {
+	out, err := xml.MarshalIndent(s, " ", "  ")
+
+	return out, err
+}
