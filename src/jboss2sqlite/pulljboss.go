@@ -31,22 +31,33 @@ func getCurrentInfo(site string) *jbossinfo.JbossStatus {
 	return info
 }
 
-func pullJboss(sites []string, interval time.Duration) {
+func pullSite(site string, now time.Time, queue chan *InsertRequest) {
+	fmt.Printf("pulling %s: %s\n", site, now.Format(time.RFC3339))
+	info := getCurrentInfo(site)
 
-	queue := make(chan *InsertRequest, 100)
-	ok := sqliteWriteHandler(queue)
+	queue <- &InsertRequest{site, now, info}
+}
+
+func pullJboss(sites []string, interval time.Duration) {
+	for _, site := range sites {
+		if JbossStatusUrls[site] == "" {
+			fmt.Printf("Error, %s is an unkonwn site\n", site)
+			return
+		}
+	}
 
 	ticker := time.Tick(interval)
 
-	go func() {
-		for now := range ticker {
-			for _, site := range sites {
-				info := getCurrentInfo(site)
+	for _ = range ticker {
+		queue := make(chan *InsertRequest, 10)
+		ok := sqliteWriteHandler(queue)
 
-				queue <- &InsertRequest{site, now, info}
-			}
+    // remember to parallelize pullSite, but remember that the sqlite close has to come after all are done
+		for _, site := range sites {
+			pullSite(site, time.Now(), queue)
 		}
+
 		queue <- nil
-	}()
-	<-ok
+		<-ok
+	}
 }
