@@ -37,10 +37,10 @@ type JbossWorker struct {
 	Protocol              string `xml:"protocol,attr"`
 }
 type JbossConnector struct {
-	Name        string           `xml:"name"`
+	Name        string           `xml:"name,attr"`
 	ThreadInfo  JbossThreadInfo  `xml:"threadInfo"`
 	RequestInfo JbossRequestInfo `xml:"requestInfo"`
-	Workers     []JbossWorker    `xml:"workers"`
+	Workers     []JbossWorker    `xml:"workers>worker"`
 }
 type JbossStatus struct {
 	XMLName    xml.Name         `xml:"status"`
