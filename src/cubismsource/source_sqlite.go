@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
-import "time"
-import "flag"
+import (
+	"flag"
+	"fmt"
+	"strings"
+	"time"
+)
 import "code.google.com/p/gosqlite/sqlite"
 
 var (
@@ -25,21 +28,23 @@ func getSqliteTimeSeries(site, field string, start, stop time.Time) *TimeSeries 
 	defer dbconn.Close()
 
 	switch field {
-	case "site", "date", "free", "max", "total", "threads": // all good
+	case "site", "date", "free", "max", "total", "threads", "maxRequestTime": // all good
 	default:
 		fmt.Printf("Bad field: %s\n", field)
 		return nil
 	}
 
-	stmt, stmterr := dbconn.Prepare("select date, " + field + " from ram where site = ?1 and date between ?2 and ?3 order by date")
+	stmt, stmterr := dbconn.Prepare("select date, xml from jvmmetrics where site = ?1 and date between ?2 and ?3 order by date")
 	if stmterr != nil {
-		fmt.Print(err)
+		fmt.Println(stmterr)
+		return nil
 	}
 	defer stmt.Finalize()
 
 	err = stmt.Exec(site, start.Format(SqliteTimeFormat), stop.Format(SqliteTimeFormat))
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
+		return nil
 	}
 	//fmt.Printf("sql: %s\n", stmt.SQL())
 
@@ -54,7 +59,7 @@ func getSqliteTimeSeries(site, field string, start, stop time.Time) *TimeSeries 
 		if dateError != nil {
 			fmt.Printf("bad date: %v", dateError)
 		}
-		entry := TimeSeriesEntry{field, date, value}
+		entry := TimeSeriesEntry{field, date, getFieldValueFromXml(strings.NewReader(value), field)}
 
 		//fmt.Printf("%#v\n", entry)
 		series.Entries = append(series.Entries, entry)

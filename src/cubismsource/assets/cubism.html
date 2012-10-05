@@ -67,22 +67,33 @@ var context = cubism.context()
       .step(10e3)
       .size(960);
 
-var jbuchctx = jbuchCtxgen("http://localhost:8080");
-var metric_free = jbuchctx.metric("TST", "free");
-var metric_total = jbuchctx.metric("TST", "total");
-var metric_threads = jbuchctx.metric("TST", "threads");
-
-var metric_used = metric_total.subtract(metric_free);
-var lastWeek = metric_used.shift(-7 * 24 * 60 * 60 * 1000);
-
-metric_used.toString = function() { return "Used" };
-metric_threads.toString = function() { return "Threads" };
-lastWeek.toString = function() { return "LastWeek" };
-
+var jbuchctx = jbuchCtxgen("");
 
 var colorsRed = ["#FDBE85", "#FEEDDE", "#FD8D3C", "#E6550D", "#A63603", "#FDBE85", "#FEEDDE", "#FD8D3C", "#E6550D", "#A63603" ],
-        colorsGreen = [ "#E5F5F9", "#99D8C9", "#2CA25F", "#E5F5F9", "#99D8C9", "#2CA25F"],
-            colorsBlue = [ "#ECE7F2", "#A6BDDB", "#2B8CBE", "#ECE7F2", "#A6BDDB", "#2B8CBE"];
+    colorsGreen = [ "#E5F5F9", "#99D8C9", "#2CA25F", "#E5F5F9", "#99D8C9", "#2CA25F"],
+    colorsBlue = [ "#ECE7F2", "#A6BDDB", "#2B8CBE", "#ECE7F2", "#A6BDDB", "#2B8CBE"];
+function colorFunc(d,i) {
+  console.log(d);
+  if (i % 3 == 0) return colorsRed;
+  if (i % 2 == 0) return colorsBlue;
+  if (i % 1 == 0) return colorsGreen;
+}
+
+function metricBulk(site) {
+  var availableMetrics = ["free","total","threads","max"];
+
+  var usedMetric = jbuchctx.metric(site, "total").subtract(jbuchctx.metric(site, "free"));
+  var threadMetric = jbuchctx.metric(site, "threads");
+  var mReqTime = jbuchctx.metric(site, "maxRequestTime").divide(1000); // ms -> s
+
+  usedMetric.toString = function() { return site+" Used" };
+  threadMetric.toString  = function() { return site+" Threads" };
+  mReqTime.toString  = function() { return site+" maxReqT" };
+  
+  return [usedMetric, threadMetric, mReqTime];
+}
+var allMetrics = new Array();
+allMetrics = allMetrics.concat(metricBulk("TST"));
 
 d3.select("#jbuchmetric").call(function(div) {
 
@@ -91,11 +102,11 @@ d3.select("#jbuchmetric").call(function(div) {
       .call(context.axis().orient("top"));
 
   div.selectAll(".horizon")
-      .data([metric_used, metric_threads])
+      .data(allMetrics)
       .enter().append("div")
       .attr("class", "horizon")
       .call(context.horizon()/*.extent([0, 1500])*/
-        .colors(function (d,i) { console.log(d); console.log(i); return i & 1 > 0 ? colorsBlue : colorsGreen; }));
+        .colors(colorFunc));
 
   div.append("div")
       .attr("class", "rule")

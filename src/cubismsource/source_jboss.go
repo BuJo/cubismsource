@@ -1,16 +1,58 @@
 package main
 
-import "fmt"
-import "strconv"
-import "time"
-import "net/http"
-import "jbossinfo"
+import (
+	"fmt"
+	"io"
+	"jbossinfo"
+	"net/http"
+	"strconv"
+	"time"
+)
 
 var (
 	JbossStatusUrls = map[string]string{
 		"TST": "http://127.0.0.1:8080/status?XML=true",
 	}
 )
+
+func getFieldValueFromXml(xml io.Reader, field string) string {
+	var value string
+
+	info, infoErr := jbossinfo.ParseJbossInfoXML(xml)
+	if infoErr != nil {
+		fmt.Printf("Parsing jboss xml failed: %s\n", infoErr)
+		return ""
+	}
+
+	switch field {
+	case "free":
+		value = strconv.Itoa(info.JvmStatus.Free)
+	case "total":
+		value = strconv.Itoa(info.JvmStatus.Total)
+	case "max":
+		value = strconv.Itoa(info.JvmStatus.Max)
+	case "threads":
+		threadCount := 0
+		for _, connector := range info.Connectors {
+			threadCount += connector.ThreadInfo.CurrentThreadsBusy
+		}
+		value = strconv.Itoa(threadCount)
+	case "maxRequestTime":
+		maxRequestTime := 0
+		for _, connector := range info.Connectors {
+			for _, worker := range connector.Workers {
+				if worker.RequestProcessingTime > maxRequestTime {
+					maxRequestTime = worker.RequestProcessingTime
+				}
+			}
+		}
+		value = strconv.Itoa(maxRequestTime)
+	default:
+		return ""
+	}
+
+	return value
+}
 
 func getCurrentTimeSeries(site, field string, start, stop time.Time) *TimeSeries {
 	if time.Now().Sub(start).Minutes() > 3 {
@@ -26,33 +68,10 @@ func getCurrentTimeSeries(site, field string, start, stop time.Time) *TimeSeries
 		return nil
 	}
 
-	info, infoErr := jbossinfo.ParseJbossInfoXML(resp.Body)
-	if infoErr != nil {
-		fmt.Printf("Parsing jboss xml failed: %s\n", infoErr)
-		return nil
-	}
-
 	series := TimeSeries{}
 	series.Entries = []TimeSeriesEntry{}
 
-	entry := TimeSeriesEntry{field, start, ""}
-
-	switch field {
-	case "free":
-		entry.Value = strconv.Itoa(info.JvmStatus.Free)
-	case "total":
-		entry.Value = strconv.Itoa(info.JvmStatus.Total)
-	case "max":
-		entry.Value = strconv.Itoa(info.JvmStatus.Max)
-	case "threads":
-		threadCount := 0
-		for _, connector := range info.Connectors {
-			threadCount += connector.ThreadInfo.CurrentThreadsBusy
-		}
-		entry.Value = strconv.Itoa(threadCount)
-	default:
-		return nil
-	}
+	entry := TimeSeriesEntry{field, start, getFieldValueFromXml(resp.Body, field)}
 
 	series.Entries = append(series.Entries, entry)
 

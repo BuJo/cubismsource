@@ -1,14 +1,17 @@
 package main
 
-import "fmt"
-import "log"
-import "strconv"
-import "io/ioutil"
-import "time"
-import "net/http"
-import "encoding/json"
-import "flag"
-import "os"
+import (
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+)
 
 var (
 	bindServer = flag.String("bind", ":8080", "Address/Port to bind to, default: *:8080")
@@ -28,6 +31,29 @@ type appError struct {
 }
 
 type appHandler func(http.ResponseWriter, *http.Request) *appError
+
+func getJsonMetrics(site, expression string, start, stop time.Time, step time.Duration) ([]byte, error) {
+	var series *TimeSeries
+
+	if *intImpl == "sqlite" {
+		series = getSqliteTimeSeries(site, expression, start, stop)
+	} else if *intImpl == "jboss" {
+		series = getCurrentTimeSeries(site, expression, start, stop)
+	}
+
+	series = stepTimeSeries(series, start, stop, step)
+
+	if series == nil {
+		return nil, errors.New("Something bad happened with steps")
+	}
+
+	bytes, err := json.Marshal(series.Entries)
+	if err != nil {
+		return nil, errors.New("marshalling time series failed")
+	}
+
+	return bytes, nil
+}
 
 // "/1.0/metric?expression=free&start=2012-10-01T15:15:40.000Z&stop=2012-10-01T15:16:50.000Z&step=10000"
 func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
@@ -55,18 +81,15 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
 		return &err
 	}
 
+	// XXX: js does not send (parseable) the time zone, temporary hackfix here :(
+	start = start.Add(2 * time.Hour)
+	stop = stop.Add(2 * time.Hour)
+
 	if site == "" {
 		site = "TST"
 	}
 
-	//series := stepTimeSeries(getSqliteTimeSeries(site, expression, start, stop), start, stop, step)
-	series := stepTimeSeries(getCurrentTimeSeries(site, expression, start, stop), start, stop, step)
-	if series == nil {
-		err.Message = "Something bad happened with steps"
-		return &err
-	}
-
-	bytes, err.Error = json.Marshal(series.Entries)
+	bytes, err.Error = getJsonMetrics(site, expression, start, stop, step)
 	if err.Error != nil {
 		return &err
 	}
