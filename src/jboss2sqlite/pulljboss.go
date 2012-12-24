@@ -35,7 +35,9 @@ func pullSite(site string, now time.Time, queue chan *InsertRequest) {
 	fmt.Printf("pulling %s: %s\n", site, now.Format(time.RFC3339))
 	info := getCurrentInfo(site)
 
-	queue <- &InsertRequest{site, now, info}
+	if info != nil {
+		queue <- &InsertRequest{site, now, info}
+	}
 }
 
 func pullJboss(sites []string, interval time.Duration) {
@@ -52,7 +54,7 @@ func pullJboss(sites []string, interval time.Duration) {
 		queue := make(chan *InsertRequest, 10)
 		ok := sqliteWriteHandler(queue)
 
-    // remember to parallelize pullSite, but remember that the sqlite close has to come after all are done
+		// remember to parallelize pullSite, but remember that the sqlite close has to come after all are done
 		for _, site := range sites {
 			pullSite(site, time.Now(), queue)
 		}

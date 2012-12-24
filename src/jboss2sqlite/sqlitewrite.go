@@ -22,6 +22,9 @@ func sqliteWriteHandler(queue chan *InsertRequest) chan bool {
 		fmt.Println(err)
 		return nil
 	}
+
+	dbconn.BusyTimeout(10 * 1000) /* 10 s timeout */
+
 	stmt, stmterr := dbconn.Prepare("INSERT INTO jvmmetrics (site, date, free, max, total, threads, xml) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
 	if stmterr != nil {
 		fmt.Print(err)

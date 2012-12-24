@@ -16,7 +16,7 @@ import (
 var (
 	bindServer = flag.String("bind", ":8080", "Address/Port to bind to, default: *:8080")
 	httpRoot   = flag.String("root", "assets", "HTTP Root")
-	intImpl    = flag.String("impl", "jboss", "INTERNAL specifying server behaviour")
+	intImpl    = flag.String("impl", "jboss", "INTERNAL specifying server behaviour (sqlite, jboss)")
 
 	Usage = func() {
 		fmt.Printf("%s Usage:\n", os.Args[0])
@@ -82,8 +82,10 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	// XXX: js does not send (parseable) the time zone, temporary hackfix here :(
-	start = start.Add(2 * time.Hour)
-	stop = stop.Add(2 * time.Hour)
+	//start = time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), start.Nanosecond(), time.UTC)
+	//stop = time.Date(stop.Year(), stop.Month(), stop.Day(), stop.Hour(), stop.Minute(), stop.Second(), stop.Nanosecond(), time.UTC)
+	start = start.Add(time.Hour * 1)
+	stop = stop.Add(time.Hour * 1)
 
 	if site == "" {
 		site = "TST"

@@ -5,9 +5,9 @@ import "io/ioutil"
 import "encoding/xml"
 
 type JbossJvmStatus struct {
-	Free  int `xml:"free,attr"`
-	Total int `xml:"total,attr"`
-	Max   int `xml:"max,attr"`
+	Free  uint `xml:"free,attr"`
+	Total uint `xml:"total,attr"`
+	Max   uint `xml:"max,attr"`
 }
 type JbossThreadInfo struct {
 	MaxThreads         int `xml:"maxThreads,attr"`
@@ -17,12 +17,12 @@ type JbossThreadInfo struct {
 	CurrentThreadsBusy int `xml:"currentThreadsBusy,attr"`
 }
 type JbossRequestInfo struct {
-	MaxTime        int `xml:"maxTime,attr"`
-	ProcessingTime int `xml:"processingTime,attr"`
-	RequestCount   int `xml:"requestCount,attr"`
-	ErrorCount     int `xml:"errorCount,attr"`
-	BytesReceived  int `xml:"bytesReceived,attr"`
-	BytesSent      int `xml:"bytesSent,attr"`
+	MaxTime        int  `xml:"maxTime,attr"`
+	ProcessingTime int  `xml:"processingTime,attr"`
+	RequestCount   int  `xml:"requestCount,attr"`
+	ErrorCount     int  `xml:"errorCount,attr"`
+	BytesReceived  uint `xml:"bytesReceived,attr"`
+	BytesSent      uint `xml:"bytesSent,attr"`
 }
 type JbossWorker struct {
 	Stage                 string `xml:"stage,attr"`

@@ -26,11 +26,13 @@ func getFieldValueFromXml(xml io.Reader, field string) string {
 
 	switch field {
 	case "free":
-		value = strconv.Itoa(info.JvmStatus.Free)
+		value = strconv.FormatUint(uint64(info.JvmStatus.Free), 10)
 	case "total":
-		value = strconv.Itoa(info.JvmStatus.Total)
+		value = strconv.FormatUint(uint64(info.JvmStatus.Total), 10)
 	case "max":
-		value = strconv.Itoa(info.JvmStatus.Max)
+		value = strconv.FormatUint(uint64(info.JvmStatus.Max), 10)
+	case "used":
+		value = strconv.FormatUint(uint64(info.JvmStatus.Total-info.JvmStatus.Free), 10)
 	case "threads":
 		threadCount := 0
 		for _, connector := range info.Connectors {

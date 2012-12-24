@@ -27,8 +27,10 @@ func getSqliteTimeSeries(site, field string, start, stop time.Time) *TimeSeries 
 	}
 	defer dbconn.Close()
 
+	dbconn.BusyTimeout(2 * 1000)
+
 	switch field {
-	case "site", "date", "free", "max", "total", "threads", "maxRequestTime": // all good
+	case "site", "date", "free", "max", "total", "used", "threads", "maxRequestTime": // all good
 	default:
 		fmt.Printf("Bad field: %s\n", field)
 		return nil

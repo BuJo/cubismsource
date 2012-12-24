@@ -24,12 +24,12 @@ const (
 	IsoD3Format      = "2006-01-02T15:04:05.000Z"
 )
 
-func parseJbossIntWithUnit(str string) (int, error) {
+func parseJbossIntWithUnit(str string) (uint, error) {
 	chunks := strings.Split(str, " ")
 	if len(chunks) != 2 {
 		return 0, errors.New("Bad input")
 	}
-	nr, err := strconv.Atoi(chunks[0])
+	nr, err := strconv.ParseUint(chunks[0], 10, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -45,7 +45,7 @@ func parseJbossIntWithUnit(str string) (int, error) {
 		return 0, errors.New("Bad Qualifier, must be MB/KB/GB")
 	}
 
-	return nr, nil
+	return uint(nr), nil
 }
 
 func parseHtml(filename string) (info *jbossinfo.JbossStatus, date time.Time, err error) {
